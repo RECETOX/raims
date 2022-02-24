@@ -1,0 +1,21 @@
+version: "3.0"
+services:
+  jupyter:
+    build: .
+    ports:
+      - "8888:8888"
+    volumes:
+      - "data:/workspace/data"
+      - "runs:/workspace/runs"
+    command: jupyter-lab
+  tensorboard:
+    build: .
+    ports:
+      - "6006:6006"
+    volumes:
+      - "data:/workspace/data"
+      - "runs:/workspace/runs"
+    command: tensorboard --logdir=runs
+volumes:
+  data:
+  runs:
