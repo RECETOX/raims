@@ -1,7 +1,7 @@
 from typing import Any, Tuple
 
 import torch
-import torch.nn.functional as F
+import torch.nn.functional
 from pytorch_lightning import LightningModule
 from torch import nn
 
@@ -32,7 +32,7 @@ class MultilayerPerceptronModel(LightningModule):
     def _step(self, batch):
         x, y = batch
         y_hat = self(x)
-        loss = F.binary_cross_entropy(y_hat, y, reduction='mean')
+        loss = torch.nn.functional.binary_cross_entropy(y_hat, y, reduction='mean')
         return loss
 
     def training_step(self, batch, batch_idx):

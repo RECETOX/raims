@@ -1,16 +1,16 @@
 import os.path
-from typing import Tuple, Optional, Generator, Dict, Union, Callable, Any
+from typing import Tuple, Optional, Generator, Dict, Union, Callable, Collection
 
 import matchms.filtering
 import matchms.importing
 import numpy
-import numpy as np
 import torch
-import torch.nn.functional as F
-from pytorch_lightning.utilities.types import EVAL_DATALOADERS
+import torch.nn.functional
 from spec2vec import SpectrumDocument
 from torch import Tensor
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
+
+Seed = Union[int, Collection[int], numpy.random.SeedSequence, numpy.random.BitGenerator, numpy.random.Generator]
 
 
 def process_spectrum(spectrum: Optional[matchms.Spectrum], n_required_peaks: Optional[int] = 10,
@@ -33,6 +33,24 @@ def load_msp_documents(filename: str, n_max_peaks: Optional[int] = None) -> Gene
                matchms.importing.load_from_msp(filename))
     spectra = (SpectrumDocument(spectrum, n_decimals=0) for spectrum in spectra if spectrum is not None)
     return spectra
+
+
+def spectrum_binning(spectrum: SpectrumDocument, size: int = 1001):
+    result = numpy.zeros(size, dtype=numpy.float32)
+    result[numpy.asarray(spectrum.peaks.mz, dtype=int)] = numpy.asarray(spectrum.peaks.intensities)
+    return result
+
+
+def get_histogram_size(spectrum: SpectrumDocument, cumulative_level: float = 0.95):
+    sorted_intensities = numpy.sort(spectrum.peaks.intensities)
+    normalized_intensities = sorted_intensities / numpy.sum(sorted_intensities)
+    return numpy.argmax(numpy.cumsum(normalized_intensities[::-1]) > cumulative_level)
+
+
+def generative_dataset_collate(batch):
+    padded = torch.nn.utils.rnn.pad_sequence([item[0] for item in batch], batch_first=True, padding_value=0)
+    target = torch.nn.utils.rnn.pad_sequence([item[1] for item in batch], batch_first=True, padding_value=-100)
+    return [padded, torch.LongTensor(target)]
 
 
 class HuggingfaceDataset(Dataset):
@@ -111,7 +129,7 @@ class GenerativeDataset(Dataset):
         return torch.tensor(self.vocabulary[word], dtype=torch.int)
 
     def encode_peak_onehot(self, word: int) -> Tensor:
-        return F.one_hot(self.encode_peak(word), num_classes=len(self.vocabulary))
+        return torch.nn.functional.one_hot(self.encode_peak(word), num_classes=len(self.vocabulary))
 
     def encode_spectrum_document(self, document: SpectrumDocument, indices) -> Tensor:
         encoding: Callable[[int], Tensor] = self.encode_peak_onehot if self.onehot else self.encode_peak
@@ -124,49 +142,114 @@ class GenerativeDataset(Dataset):
 
 
 class FixedSizedDataset(Dataset):
-    def __init__(self, filename: str):
+    def __init__(self, filename: str, prob: float = 0.2, max_mz: int = 1001, cumulative_level: float = 0.95,
+                 seed: Optional[Seed] = 42):
         self.spectrum_documents = list(load_msp_documents(filename))
+        self.prob = prob
+        self.max_mz = max_mz
+        self.cumulative_level = cumulative_level
+        self.rng = numpy.random.default_rng(seed)
 
     def __len__(self) -> int:
         return len(self.spectrum_documents)
 
     def __getitem__(self, index: int) -> Tuple[Tensor, Tensor]:
-        vector = spectrum_to_vector(self.spectrum_documents[index], self.size)
+        spectrum_document = self.spectrum_documents[index]
+        binned_spectrum = spectrum_binning(spectrum_document, self.size)
 
+        missing_mask = self.rng.uniform(0, 1, self.max_mz) < self.prob
 
+        histogram_size = get_histogram_size(spectrum_document, self.cumulative_level)
+        histogram_indices = numpy.argpartition(binned_spectrum, -histogram_size)[-histogram_size:]
+        histogram_mask = numpy.zeros_like(binned_spectrum, dtype=bool)
+        histogram_mask[histogram_indices] = True
 
-def spectrum_to_vector(spectrum: SpectrumDocument, size: int = 1001):
-    result = numpy.zeros(size, dtype=numpy.float)
-    result[numpy.asarray(spectrum.peaks.mz, dtype=int)] = numpy.asarray(spectrum.peaks.intensities)
-    return result
+        x = numpy.where(missing_mask, 0, binned_spectrum)
+        y = numpy.where(missing_mask & histogram_mask, 1, 0)
+
+        return torch.tensor(x, dtype=torch.float32), torch.tensor(y, dtype=torch.float32)
+
 
 from pytorch_lightning import LightningDataModule
 
-class BaseDataModule(LightningDataModule):
-    def __init__(self, path, constructor):
+
+class HuggingfaceDataModule(LightningDataModule):
+    def __init__(self, path):
         super().__init__()
-        self.train_dataset = constructor(os.path.join(path, 'train.msp'))
-        self.val_dataset = constructor(os.path.join(path, 'val.msp'))
-        self.test_dataset = constructor(os.path.join(path, 'test.msp'))
 
-    def train_dataloader(self):
-        return torch.utils.data.DataLoader(self.train_dataset)
+        self.train_dataset = None
+        self.test_dataset = None
+        self.val_dataset = None
 
-    def val_dataloader(self):
-        return torch.utils.data.DataLoader(self.val_dataset)
+    def train_dataloader(self) -> DataLoader:
+        return DataLoader(self.train_dataset)
 
-    def test_dataloader(self):
-        return torch.utils.data.DataLoader(self.test_dataset)
+    def test_dataloader(self) -> DataLoader:
+        return DataLoader(self.test_dataset)
 
-    def predict_dataloader(self):
-        return torch.utils.data.DataLoader(self.test_dataset)
+    def val_dataloader(self) -> DataLoader:
+        return DataLoader(self.val_dataset)
 
-
-class FixedSizedDataModule(BaseDataModule):
-    def __init__(self, path):
-        super().__init__(path, FixedSizedDataset)
+    def predict_dataloader(self) -> DataLoader:
+        return DataLoader(self.test_dataset)
 
 
-class GenerativeDataModule(BaseDataModule):
-    def __init__(self, path):
-        super().__init__(path, GenerativeDataset)
+class FixedSizedDataModule(LightningDataModule):
+    def __init__(self, path, batch_size: int = 1024, shuffle: bool = True, num_workers: int = 8,
+                 seed: numpy.random.SeedSequence = None):
+        super().__init__()
+
+        if seed is None:
+            seed = numpy.random.SeedSequence()
+        child_seeds = seed.spawn(3)
+
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+        self.num_workers = num_workers
+
+        self.train_dataset = FixedSizedDataset(os.path.join(path, 'train.msp'), child_seeds[0])
+        self.test_dataset = FixedSizedDataset(os.path.join(path, 'test.msp'), child_seeds[1])
+        self.val_dataset = FixedSizedDataset(os.path.join(path, 'val.msp'), child_seeds[2])
+
+    def _create_loader(self, dataset: Dataset) -> DataLoader:
+        return DataLoader(dataset, batch_size=self.batch_size, shuffle=self.shuffle, num_workers=self.num_workers)
+
+    def train_dataloader(self) -> DataLoader:
+        return self._create_loader(self.train_dataset)
+
+    def test_dataloader(self) -> DataLoader:
+        return self._create_loader(self.test_dataset)
+
+    def val_dataloader(self) -> DataLoader:
+        return self._create_loader(self.val_dataset)
+
+    def predict_dataloader(self) -> DataLoader:
+        return self._create_loader(self.test_dataset)
+
+
+class GenerativeDataModule(LightningDataModule):
+    def __init__(self, path, vocabulary, batch_size: int = 256, num_workers: int = 8):
+        super().__init__()
+
+        self.train_dataset = GenerativeDataset(os.path.join(path, 'train.msp'), vocabulary)
+        self.test_dataset = GenerativeDataset(os.path.join(path, 'test.msp'), vocabulary)
+        self.val_dataset = GenerativeDataset(os.path.join(path, 'val.msp'), vocabulary)
+
+        self.batch_size = batch_size
+        self.num_workers = num_workers
+
+    def _create_loader(self, dataset: Dataset) -> DataLoader:
+        return DataLoader(dataset, batch_size=self.batch_size, num_workers=self.num_workers,
+                          collate_fn=generative_dataset_collate)
+
+    def train_dataloader(self) -> DataLoader:
+        return self._create_loader(self.train_dataset)
+
+    def test_dataloader(self) -> DataLoader:
+        return self._create_loader(self.test_dataset)
+
+    def val_dataloader(self) -> DataLoader:
+        return self._create_loader(self.val_dataset)
+
+    def predict_dataloader(self) -> DataLoader:
+        return self._create_loader(self.test_dataset)
