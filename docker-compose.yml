@@ -1,7 +1,9 @@
 version: "3.0"
 services:
   jupyter:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "8888:8888"
     volumes:
@@ -9,7 +11,9 @@ services:
       - "runs:/workspace/runs"
     command: jupyter-lab
   tensorboard:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "6006:6006"
     volumes:
