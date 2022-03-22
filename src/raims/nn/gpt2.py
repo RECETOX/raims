@@ -1,9 +1,11 @@
+from typing import Dict
+
 from transformers import GPT2Config, GPT2LMHeadModel
 from pytorch_lightning import LightningModule
 
 
-class Gpt2Model(LightningModule):
-    def __init__(self, vocabulary):
+class Gpt2(LightningModule):
+    def __init__(self, vocabulary: Dict[str, int]):
         super().__init__()
 
         config = GPT2Config(n_positions=256, vocab_size=len(vocabulary) + 1, bos_token_id=len(vocabulary),
@@ -20,6 +22,7 @@ class Gpt2Model(LightningModule):
     def training_step(self, batch, batch_ids):
         loss = self._step(batch)
         self.log("train_loss", loss)
+        return loss
 
     def validation_step(self, batch, batch_ids):
         loss = self._step(batch)
