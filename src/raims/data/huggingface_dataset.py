@@ -58,7 +58,7 @@ class HuggingfaceDataset(Dataset):
 
 
 class HuggingfaceDataModule(LightningDataModule):
-    def __init__(self, path, vocabulary, max_length: int = 256, include_intensity: bool = False,
+    def __init__(self, path: str, vocabulary: Dict[str, int], max_length: int = 256, include_intensity: bool = False,
                  quadratic_bins: bool = False, batch_size: int = 64, num_workers: int = 8):
         super().__init__()
 
