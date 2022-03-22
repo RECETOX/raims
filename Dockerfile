@@ -16,7 +16,7 @@ RUN conda config \
 RUN rm -rf /workspace/* \
     && mkdir /workspace/data \
     && mkdir /workspace/model \
-    && mkdir /worskapce/runs
+    && mkdir /workspace/wandb
 
 COPY notebooks/ /workspace/
 COPY src/raims/ /workspace/raims/
