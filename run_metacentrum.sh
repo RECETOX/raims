@@ -9,7 +9,7 @@ echo "${PBS_O_LOGNAME:?This script must be run under PBS scheduling system, exec
 HOSTNAME=$(hostname -f)
 PORT=8888
 TOKEN="d08d8f7784636a70572c44c4d4e4a7131d0de87fc54f2eac"
-SINGULARITY_IMAGE="$PBS_O_WORKDIR/raims_jupyter.sif"
+SINGULARITY_IMAGE="$PBS_O_WORKDIR/singularity/raims_jupyter.sif"
 
 while netstat -taln | grep -q $PORT
 do
