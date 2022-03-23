@@ -9,8 +9,9 @@ services:
     volumes:
       - "data:/workspace/data"
       - "model:/workspace/model"
-      - "runs:/workspace/runs"
+      - "wandb:/workspace/wandb"
     command: jupyter-lab
 volumes:
   data:
-  runs:
+  model:
+  wandb:
