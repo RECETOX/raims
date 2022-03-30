@@ -18,5 +18,9 @@ RUN rm -rf /workspace/* \
     && mkdir /workspace/model \
     && mkdir /workspace/wandb
 
+COPY pyproject.toml setup.cfg /code/
+COPY src /code/src/
+RUN pip install /code
+
 COPY notebooks/ /workspace/
 COPY src/raims/ /workspace/raims/
