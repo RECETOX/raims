@@ -63,6 +63,10 @@ class BaseLSTM(LightningModule):
 
 
 class PureLSTM(BaseLSTM):
+    """
+    Generative model composed of one-hot encoding layer, LSTM module, and LogSoftmax layer. The model can optionally
+    take spectral intensity into consideration.
+    """
     def __init__(self, num_classes: int, hidden_size: int, include_intensity: bool, learning_rate: float):
         super().__init__(input_size=num_classes, hidden_size=hidden_size, include_intensity=include_intensity,
                          learning_rate=learning_rate)
@@ -73,6 +77,10 @@ class PureLSTM(BaseLSTM):
 
 
 class EmbeddingLSTM(BaseLSTM):
+    """
+    Generative model composed of embedding layer, LSTM module, and LogSoftmax layer. The model can optionally
+    take spectral intensity into consideration.
+    """
     def __init__(self, embeddings: Tensor, hidden_size: int, freeze_embeddings: bool, include_intensity: bool,
                  learning_rate: float):
         super().__init__(input_size=embeddings.shape[1], hidden_size=hidden_size, include_intensity=include_intensity,

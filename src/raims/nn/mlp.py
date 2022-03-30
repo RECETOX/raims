@@ -6,6 +6,9 @@ from pytorch_lightning import LightningModule
 
 
 class MultilayerPerceptron(LightningModule):
+    """
+    Pytorch Lightning module of a multilayer perceptron.
+    """
     def __init__(self, max_mz: int, hidden_layers: List[int], learning_rate: float, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
 

@@ -11,7 +11,15 @@ from torch.utils.data import Dataset, DataLoader
 from .util import load_msp_documents
 
 
-def _spectrum_binning(spectrum: SpectrumDocument, size: int = 1001):
+def _spectrum_binning(spectrum: SpectrumDocument, size: int = 1001) -> numpy.ndarray:
+    """
+    From a list of peak positions and its intensities produce a vector of intensities, i.e. create a vector `v` so as
+    `v[int(peak.mz)] = peak.intensity`.
+
+    :param spectrum: a spectrum to bin
+    :param size: the maximal m/z value to consider and also the length of the produced vector
+    :returns: numpy array with binned spectrum
+    """
     masses = numpy.asarray(spectrum.peaks.mz, dtype=numpy.int32)
     intensities = numpy.asarray(spectrum.peaks.intensities, dtype=numpy.float32)
 
@@ -24,7 +32,12 @@ def _spectrum_binning(spectrum: SpectrumDocument, size: int = 1001):
     return result
 
 
-def _get_histogram_size(spectrum: SpectrumDocument, cumulative_level: float = 0.95):
+def _get_histogram_size(spectrum: SpectrumDocument, cumulative_level: float = 0.95) -> numpy.ndarray:
+    """
+    :param spectrum:
+    :param cumulative_level:
+    :returns:
+    """
     sorted_intensities = numpy.sort(spectrum.peaks.intensities)
     normalized_intensities = sorted_intensities / numpy.sum(sorted_intensities)
     return numpy.argmax(numpy.cumsum(normalized_intensities[::-1]) > cumulative_level)
