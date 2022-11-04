@@ -43,7 +43,7 @@ class BaseLSTM(LightningModule):
     def _step(self, batch) -> float:
         (peaks, intensities), y = batch
         y_hat, _ = self(peaks, intensities)
-        return F.nll_loss(y_hat, y)
+        return F.nll_loss(torch.moveaxis(y_hat,1,2), y.long())
 
     def training_step(self, batch: Any, batch_idx: int) -> float:
         loss = self._step(batch)
@@ -73,7 +73,11 @@ class PureLSTM(BaseLSTM):
         self.num_classes = num_classes
 
     def forward(self, peaks: Tensor, intensities: Optional[Tensor] = None, init: Optional[Tensor] = None):
-        super().forward(F.one_hot(peaks, num_classes=self.num_classes), intensities, init)
+        return super().forward(F.one_hot(peaks.long(), num_classes=self.num_classes).to(torch.float32), intensities, init)
+
+#    def _step(self, batch) -> float:
+#       (peaks, intensities), y = batch
+#       return super()._step(((peaks,intensities),F.one_hot(y.long(),num_classes=self.num_classes).to(torch.float32)))
 
 
 class EmbeddingLSTM(BaseLSTM):
