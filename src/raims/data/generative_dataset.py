@@ -21,26 +21,14 @@ class GenerativeDataset(Dataset):
     def __len__(self) -> int:
         return len(self.spectrum_documents)
 
-#    def __getitem__(self, item: int) -> Tuple[Tuple[Tensor, Tensor], Tensor]:
     def __getitem__(self, item: int) -> Tuple[Tensor, Tensor]:
         document = self.spectrum_documents[item]
 
-#        print(f"item {item}\ndocument {document}\n")
-#        print(f"peaks {document.peaks}\n")
-#        print(f"intensities {document.peaks.intensities}\n")
         indices = numpy.argsort(document.peaks.intensities)[::-1]
-#        print(f"indices1: {indices}\n")
         indices = numpy.asarray([i for i in indices if document.words[i] in self.vocabulary])
 
-#        print(f"indices2: {indices}\n")
-#        print(f"words: {document.words}\n")
-
-        # peaks = torch.tensor([self.vocabulary[w] for w in document.words[indices]], dtype=torch.int)
         peaks = torch.tensor([self.vocabulary[document.words[i]] for i in indices], dtype=torch.int)
-#        print(f"peaks2: {peaks}\n")
-        # intensities = torch.tensor(document.peaks.intensities[indices], dtype=torch.float32)
         intensities = torch.tensor([document.peaks.intensities[i] for i in indices], dtype=torch.float32)
-#        print(f"intensities: {intensities}\n")
 
 # ma vracet o jednu posunute
         return (peaks[:-1], intensities[:-1]), peaks[1:]
