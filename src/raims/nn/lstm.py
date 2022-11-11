@@ -8,12 +8,12 @@ from torch import Tensor
 
 
 class BaseLSTM(LightningModule):
-    def __init__(self, input_size: int, hidden_size: int, include_intensity: bool, learning_rate: float):
+    def __init__(self, input_size: int, output_size: int, hidden_size: int, include_intensity: bool, learning_rate: float):
         super().__init__()
 
         self.lstm = nn.LSTM(input_size=input_size + int(include_intensity), hidden_size=hidden_size, num_layers=2,
                             batch_first=True)
-        self.linear = nn.Linear(in_features=hidden_size, out_features=input_size)
+        self.linear = nn.Linear(in_features=hidden_size, out_features=output_size)
         self.log_softmax = nn.LogSoftmax(dim=-1)
         self.include_intensity = include_intensity
         self.learning_rate = learning_rate
@@ -43,7 +43,9 @@ class BaseLSTM(LightningModule):
     def _step(self, batch) -> float:
         (peaks, intensities), y = batch
         y_hat, _ = self(peaks, intensities)
+#        print("step: ",y.shape,y_hat.shape)
         return F.nll_loss(torch.moveaxis(y_hat,1,2), y.long())
+
 
     def training_step(self, batch: Any, batch_idx: int) -> float:
         loss = self._step(batch)
@@ -68,16 +70,12 @@ class PureLSTM(BaseLSTM):
     take spectral intensity into consideration.
     """
     def __init__(self, num_classes: int, hidden_size: int, include_intensity: bool, learning_rate: float):
-        super().__init__(input_size=num_classes, hidden_size=hidden_size, include_intensity=include_intensity,
+        super().__init__(input_size=num_classes, output_size=num_classes,hidden_size=hidden_size, include_intensity=include_intensity,
                          learning_rate=learning_rate)
         self.num_classes = num_classes
 
     def forward(self, peaks: Tensor, intensities: Optional[Tensor] = None, init: Optional[Tensor] = None):
         return super().forward(F.one_hot(peaks.long(), num_classes=self.num_classes).to(torch.float32), intensities, init)
-
-#    def _step(self, batch) -> float:
-#       (peaks, intensities), y = batch
-#       return super()._step(((peaks,intensities),F.one_hot(y.long(),num_classes=self.num_classes).to(torch.float32)))
 
 
 class EmbeddingLSTM(BaseLSTM):
@@ -87,9 +85,9 @@ class EmbeddingLSTM(BaseLSTM):
     """
     def __init__(self, embeddings: Tensor, hidden_size: int, freeze_embeddings: bool, include_intensity: bool,
                  learning_rate: float):
-        super().__init__(input_size=embeddings.shape[1], hidden_size=hidden_size, include_intensity=include_intensity,
+        super().__init__(input_size=embeddings.shape[1], output_size=embeddings.shape[0],hidden_size=hidden_size, include_intensity=include_intensity,
                          learning_rate=learning_rate)
         self.embedding = nn.Embedding.from_pretrained(embeddings=embeddings, freeze=freeze_embeddings)
 
     def forward(self, peaks: Tensor, intensities: Optional[Tensor] = None, init: Optional[Tensor] = None):
-        super().forward(self.embedding(peaks), intensities, init)
+        return super().forward(self.embedding(peaks), intensities, init)
