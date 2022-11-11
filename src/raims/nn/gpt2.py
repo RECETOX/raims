@@ -6,11 +6,12 @@ from pytorch_lightning import LightningModule
 
 
 class Gpt2(LightningModule):
-    def __init__(self, vocabulary: Dict[str, int],learning_rate = 1e-3):
+    def __init__(self, vocabulary: Dict[str, int],learning_rate = 1e-3,n_embd=768,n_layer=12,n_head=12):
         super().__init__()
 
         config = GPT2Config(n_positions=256, vocab_size=len(vocabulary) + 1, bos_token_id=len(vocabulary),
-                            eos_token_id=len(vocabulary))
+                            eos_token_id=len(vocabulary),
+                            n_embd=n_embd,n_layer=n_layer,n_head=n_head)
         self.model = GPT2LMHeadModel(config)
         self.learning_rate = learning_rate
 
