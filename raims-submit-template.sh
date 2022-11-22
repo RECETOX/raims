@@ -27,7 +27,7 @@ cat - >$fullname.sh <<EOF
 
 #PBS -N $fullname
 #PBS -q gpu
-#PBS -l select=1:ncpus=2:mem=16gb:scratch_local=10gb:ngpus=$gpus:cluster=$cluster
+#PBS -l select=1:ncpus=2:mem=$(($batch / 4))gb:scratch_local=10gb:ngpus=$gpus:cluster=$cluster
 #PBS -l walltime=4:00:00
 
 trap 'rm -r \$SCRATCHDIR' TERM EXIT
