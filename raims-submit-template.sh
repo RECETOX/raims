@@ -43,6 +43,7 @@ singularity run --nv -B \$SCRATCHDIR:/work --pwd /work $base/ljocha-raims.sif \
 	
 EOF
 
+qsub $fullname.sh
+
 done;	done;	done;	done;	done;	done
 
-qsub $fullname.sh
