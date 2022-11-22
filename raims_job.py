@@ -31,6 +31,7 @@ tags = [
 	f'embed_{args.embed}', 
 	f'gpus_{args.gpus}', 
 	f'batch_{args.batch}', 
+	f'name_{args.name}'
 ]
 
 
