@@ -22,12 +22,15 @@ for heads in 6 12 ; do
 
 fullname=raims_${cluster}_H${heads}_L${layers}_E${embed}_G${gpus}_B${batch}_${half}
 
+# bulharske konstanty
+mem=$(($batch / 4 + $heads / 2 + $layers / 6 + $embed / 60))
+
 cat - >$fullname.sh <<EOF
 #!/bin/bash
 
 #PBS -N $fullname
 #PBS -q gpu
-#PBS -l select=1:ncpus=2:mem=$(($batch / 4))gb:scratch_local=10gb:ngpus=$gpus:cluster=$cluster
+#PBS -l select=1:ncpus=2:mem=${mem}gb:scratch_local=10gb:ngpus=$gpus:cluster=$cluster
 #PBS -l walltime=4:00:00
 
 trap 'rm -r \$SCRATCHDIR' TERM EXIT
@@ -43,7 +46,7 @@ singularity run --nv -B \$SCRATCHDIR:/work --pwd /work $base/ljocha-raims.sif \
 	
 EOF
 
-qsub $fullname.sh
+echo qsub $fullname.sh
 
 done;	done;	done;	done;	done;	done
 
