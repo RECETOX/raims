@@ -1,6 +1,7 @@
 \documentclass[a4paper,11pt]{article}
 \usepackage{a4wide}
 \usepackage{graphicx}
+\usepackage{url}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage[czech]{babel}
@@ -197,6 +198,34 @@ a~celkového počtu očekávaných/doplněných.
 Formálně je metrika definována v~příloze~B práce~\cite{stary}. 
 
 Výsledky jsou diskutovány v~části~\ref{cile}.
+
+Pro vývoj a testování kódu jsme používali zejména databázi hmotnostních spekter
+NIST~\cite{nist} ve verzi z~roku 2021.
+Tato databáze nám byla poskytnuta spolupracujícím centrem Recetox, není však veřejně dostupná.
+Proto pro účely benchmarku popisovaných dále v~této zprávě používáme menší, ale stále dostatečně reprezentativní
+veřejně dostupnou databázi MoNA~\cite{mona}.
+
+Implementace modelů strojového učení využívá nízkoúrovňový framework \emph{PyTorch}, který poskytuje
+potřebné nástroje pro sestavení, trénování a použití neuronových sítí a dovoluje výpočty transparentně
+přesměrovat na akcelerátory (v~našem případě GPU).
+Dále využíváme vysokoúrovňovou knihovnu \emph{PytorchLightning}, která dovoluje řadu kroků
+je implementuje řadu opakovaných kroků standardizovaným způsobem a dovoluje tak vývoj konkrétních aplikací
+značně zjednodušit a automatizovat.
+Výše popsaný model GPT-2 je postaven na implementaci \emph{HuggingFace transformers.}
+Pro zaznamenání a analýzu průběhu výpočtu používáme knihovnu \emph{Weights and Biases} včetně vizualizace na webové aplikaci
+\url{https://wandb.ai/}.
+Prímární uživatelské rozhraní pro trénování a použití modelů a benchmarky je implementováno v~prostředí
+\emph{Jupyter Notebook}.
+Komplexní softwarové prostředí zahrnující všechny výše uvedené komponenty je zapouzdřeno do
+obrazů kontejneru \emph{Docker}.
+Kontejnery je následně možno spouštět v~principu kdykoli, od uživatelské pracovní stanice přes
+infrastrukturní službu \emph{Kubernetes} i na běžných výpočetních uzlech Metacentra s~využitím 
+prostředí \emph{Singularity.} 
+
+V~posledním jmenovaném byly provedeny i systematické experimenty pro vyhodnocení výkonu (benchmark).
+Pro tyto účely vybíráme model GPT-2, který je vhodně flexibilní v~hyperparametrech ovlivňujících jeho velikost,
+přitom při použití na vstupní databázi MoNA výpočet probíhá realisticky a v~časovém rozpětí vhodném
+pro účely benchmarku (nižší desítky minut).
 
 
 
