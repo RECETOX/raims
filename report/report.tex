@@ -139,7 +139,7 @@ která vychází z~technik používaných při zpracování přirozeného jazyka
 Metoda je trénována na reálných datech tak, aby každé špičce přiřadila vektor v~300 rozměrném prostoru tak,
 že špičky vyskytující se ve spektrech společně jsou zobrazeny na vzájemně blízké vektory.
 Reprezentací celého spektra je pak součet vektorů jednotlivých špiček vážený jejich intenzitou.
-Detaily viz příloha~C práce~\ref{stary}.
+Detaily viz příloha~C práce~\cite{stary}.
 
 Pro samotnou predikci chybějících špiček 
 uvažujeme danou konstantu $k$ -- počet spolehlivě detekovaných špiček nejvyšší intenzity,
@@ -271,6 +271,49 @@ Jednotlivé úlohy jsou automaticky označny (tzv.~\emph{tags} ve W\&B) konkrét
 pro další analýzu.
 
 \subsection{Identifikace neznámých sloučenin}
+Potenciálně problematickým místem zpracování dat z~hmotnostní spektrometrie je identifikace sloučenin,
+kterou konvenční metody realizují podobnostním hledáním ve spektrálních databázích.
+Zmíněná databáze NIST obsahuje cca.\ 300~tis. spekter, žádné další databáze nejsou obsáhlejší.
+Přitom popsána byla popsána téměř miliarda sloučenin relevantní velikosti (databáze ZINC~\cite{zinc}),
+odhady říkají, že v~přírodě se může vyskytovat až $10^{60}$ takových sloučenin.
+Pravděpodobnost, že pro náhodně získané spektrum najdeme odpovídající záznam v~databázi, je tedy velmi nízká.
+
+Tento problém se snaží řešit tzv.\ \emph{de-novo} identifikační metody.
+V~poslední době byly publikovány čtyři na sobě nezávislé~\cite{msnovelist, massgenie, vaems, spec2mol},
+které shodně využívají obdobného postupu.
+Vstupem je databáze existujících (nebo alespoň pravděpodobných) molekul jako ZINC.
+Pro tuto databázi jsou různými postupy vygenerována předpokládaná spektra (mohou být použity ,,expertní`` modely,
+které nějakým způsobem zachycují mechanismus vzniku nabitých fragmentů, i pomocné modely strojového učení
+natrénované na existujících malých databázích spekter); 
+tato spektra jsou relativně nepřesná, ale výhodou je, že takto lze získat jejich řádově větší počet.
+Vygenerovaná spektra tvoří už dostatečně velkou trénovací sady pro modely strojového učení inspirované
+zpracováním přirozeného jazyka -- problém je tak převeden na překlad z ,,jazyka spekter`` do ,,jazyka chemických vzorců``.
+
+V projektu jsme se nejprve zabývali aplikací nejvyzrálejšího z~publikovaných modelů, MSNovelist~\cite{msnovelist}
+na typ dat, která získáváme v~centru Recetox.
+Narazili jsme ale na principiální omezení -- MSNovelist vyžaduje jako podstatný vstup tzv.~\emph{precursor ion},
+známou hmotnost celé sloučeniny; ta je měřitelná v~experimentech LC/MS$^2$, pro něž byl MSNovelist vyvinut,
+ale není dostupná v~našem experimentálním uspořádání GC/MS.
+
+Proto jsme se začali věnovat dalšímu modelu MassGenie~\cite{massgenie}, pro nějž ale existuje pouze
+zevrubný popis metody, zdrojové kódy nebyly publikovány.
+V~době řešení projektu se podařilo navrhnout celý postup,
+jeho schéma je na obr.~\ref{f:denovo}.
+Použili jsme natrénovaný pomocný model NEIMS~\cite{neims} (architektura MLP),
+syntetická spektra jím generujeme z~vybrané podmnožiny databáze ZINC (celkem 4.6 milionu spekter,
+tj.\ stále ještě relativně malá část).
+Na těchto spektrech trénujeme model transformeru (BART z~implementace HuggingFace).
+Tuto část projektu měl na starosti především Adam Hájek.
+
+
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=.8\hsize]{diagram_whole}
+\caption{Celkové schéma trénování de-novo modelu}
+\label{f:denovo}
+\end{center}
+\end{figure}
 
 
 % co je MS
@@ -314,14 +357,14 @@ a současně negeneruje ve větší míře falešná pozitiva.
 Přestože se jedná o nejjednodušší možnou architekturu neuronové sítě, dostatečně velký model
 je zde opět s~to zachytit podstatné rysy trénovací datové sady.
 Scénáře testování a rozsáhlejší sady výsledku jsou uvedeny a
-detailně diskutovány v~bakalářské práci Michala Starého~\ref{stary}.
+detailně diskutovány v~bakalářské práci Michala Starého~\cite{stary}.
 Ta je na běžná měřítka bakalářské práce nadstandardně kvalitní a obsáhlá 
 a byla oceněna cenou děkana FI MU za vynikající závěrečnou práci.
 Součástí elektronické přílohy této práce je i kompletní implementace a návod k~použití.
 
 \begin{figure}
 \begin{center}
-\includegraphics[width=.8\hsize]{result-missing}
+\includegraphics[width=.667\hsize]{result-missing}
 \end{center}
 \caption{Přesnost vybraných modelů pro predikci chybějících špiček v~prvním scénáři v~závislosti na rostoucím~$k$
 (počet vstupních špiček pro model)
@@ -331,7 +374,7 @@ Součástí elektronické přílohy této práce je i kompletní implementace a 
 
 \begin{figure}
 \begin{center}
-\includegraphics[width=.8\hsize]{result-wrong}
+\includegraphics[width=.667\hsize]{result-wrong}
 \end{center}
 \caption{Přesnost vybraných modelů pro predikci chybějících špiček ve druhém scénáři v~závislosti na rostoucí
 pravděpodobnosti chybějící špičky}
@@ -383,7 +426,7 @@ Je ilustrující grafy z~W\&B uvádíme pro lepší čitelnost v~příloze této
 \begin{itemize}
 \item \emph{Základní srovnání výkonu GPU.} Provedeno na nejmenší konfiguraci
 výpočtu (6 hlav, 6 vrstev, embedding 300, velikost dávky 64),
-obr.~\ref{all_6_6_300_1_64_32}. 
+obr.~\ref{f:all_6_6_300_1_64_32}. 
 Typy GPU jsou uspořádány v~očekávaném pořadí
 T4 (adan), GeForce RTX 2080 (glados), Quadro RTX 5000 (fau), RTX A4000 (fer), A40
 (galdor), A100 (zia).
@@ -409,13 +452,39 @@ Obojí je dle očekávání úměrné velikosti modelu, ale s~relativně malým 
 $3.6\times$ pomalejší, spotřebuje o 25~\% více energie, a k~jeho běhu je třeba $4\times$ více paměti.
 
 \item \emph{Škálování na více GPU.}
-Výpočty obecně dobře škálují při spuštění na více GPU, a to už od nejmenšího modelu s~malou dávkou (obr.~\ref{f:galdor_6_6_120_any_64_both} se zrychlením $2.15\times$ na 4 GPU    
+Výpočty obecně dobře škálují při spuštění na více GPU, a to už od nejmenšího modelu s~malou dávkou (obr.~\ref{f:galdor_6_6_120_any_64_both}) se zrychlením $2.15\times$ na 4 GPU
 po největší model s~dvojnásobnou dávkou (obr.~\ref{f:galdor_12_12_300_any_128_both}), kde dosahujeme zrychlení $3.2\times$ na 4 GPU.
 Na 8 GPU se prozatím podařilo realizovat pouze menší výpočty, při nichž přidání dalších GPU výpočet ještě zrychlí,
-ale už ne významně (obr.~\ref{f:fer_6_6_120_any_64_both}.
+ale už ne významně (obr.~\ref{f:fer_6_6_120_any_64_both}).
 \end{itemize}
 
+Uvedená interpretace výsledků benchmarku zdaleka není vyčerpávající.
+Kompletní datová sada je čtenáři k~dispozici na výše uvedené adrese včetně
+přímo použitelných vizualizačních nástrojů pro další analýzy.
 
+
+Druhá část výsledků projektu (která de-facto přesahuje rámec původního plánu) 
+je implementovaný model de-novo identifikace slučenin ve fázi raného prototypu.
+Kompletní zdrojový kód je k~dispozici v~\url{https://github.com/hejjack/gc-ms_bart/}.
+Trénování modelu (300 mil.\ parametrů) i na relativně malé datové sadě (4.6 milionu spekter) bylo relativně náročné,
+trvalo cca.\ dva dny s~využitím čtyř GPU A100.
+Model dosahuje velmi dobrých výsledků na své testovací sadě generovaných spekter.
+Dosavadní výsledky jsou nadějné, ale ještě ne zcela přesvědčivé na vzorcích reálných dat -- části 
+databáze NIST, která nebyla použita k~trénování modelu. 
+Obr.~\ref{f:bart-result} ukazuje dosavadní výsledky.
+Model prokazatelně generuje podobné vzorce, ale pro přesnou identifikaci výsledky ještě 
+nejsou dostatečné. 
+V~další práci se zaměříme na zpřesnění vstupů i na trénování na obsáhlejší, tedy i reprezentativnější
+datové sadě.
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=.8\hsize]{results3_nist_on_nist}
+\caption{Histogram podobnosti výstupu de-novo modelu s~referenční molekulou spočtené na fingerprintu ECFP.
+Hodnoty kolem 0.5 znamenají již podobné molekuly, hodnoty nad 0.7 velmi podobné}
+\label{f:bart-result}
+\end{center}
+\end{figure}
 
 % Vlastní softwarový produkt (prototyp)
 %• Benchmark + testovací sada
@@ -433,8 +502,15 @@ ale už ne významně (obr.~\ref{f:fer_6_6_120_any_64_both}.
 
 % prezentace na Metasemináři, Sitole, e-INFRA
 
-% Michalova bakalarka (tam jsou i návody)
+Výsledky projektu byly prezentovány ve vystoupeních na seminářích:
+\begin{enumerate}
+\item Michal Starý, \emph{Prediction of missing peaks in mass spectra}, seminář laboratoře Sitola, 2.2.2022
+\item Aleš Křenek, \emph{Neuronové sítě v~našich aplikacích (ty potvory vám vlezou všude)}, seminář Metacentra, Kraskov, 1.11.2022
+\item Aleš Křenek, \emph{Deep learning a vrabec v~hrsti}, setkání pracovních skupin e-INFRA CZ, Ostrava, 8.11.2022
+\item Adam Hájek, \emph{Experience with large-scale NLP-inspired neural networks applied in another domain}, seminář laboratoře Sitola, 16.11.2022
+\end{enumerate}
 
+Výsledkem projektu je i bakalářská práce Michala Starého, oceněná cenou děkana FI MU za vynikající závěrečnou práci.
 
 
 
@@ -447,6 +523,36 @@ ale už ne významně (obr.~\ref{f:fer_6_6_120_any_64_both}.
 % na školení jsme se vykašlali
 
 % Adam misto Martina, kus za kus
+
+Projekt byl významně ovlivněn dlouhodobou pracovní neschopností původního hlavního řešitele
+Jiřího Novotného
+a následným rozvázáním pracovního poměru z~jeho strany.
+Vedení projektu proto převzal Aleš Křenek, původně pouze v~roli projektem nefinancovaného
+konzultanta.
+Řešení projektu (zejména vývoj benchmarku) bylo z~těchto důvodu významně zdrženo
+a po dohodě s~vedením FR~CESNETu byl projekt při zachování původního rozpočtu prodloužen.
+Dopad na dosažené výsledky díky tomu ale není významný.
+
+Plánovaný softwarový prototyp, benchmark byly vyvinuty. Výsledky benchmarku jsou prezentovány
+v~této zprávě, software a připravená referenční datová sada jsou použitelné pro další podobné testy.
+
+Dosažené výsledky v~metodách doplňování chybějících špiček by dostačovaly na přípravu průměrné publikace,
+jejich hlavním omezením je skutečnost, že jejich účinnost lze průkazně předvést pouze na uměle připravených
+testovacích datech (byť vycházejících z~databází skutečných dat).
+Proto jsme se po konzultaci s~kolegy ze spolupracujícího centra Recetox rozhodli provést ještě dodatečné
+experimenty, které přenesou výsledky na reálná experimentální data.
+Očekávaná publikace bude připravena až s~těmito výsledky.
+
+Původní návrh projektu také předpokládal, že hlavní řešitel absolvuje certifikovaná školení.
+S~jeho odchodem tato aktivita pozbyla smysl. Podobně zapojení studenti absolvovali ekvivalentní kursy
+jako součást jejich zahraničních studijních pobytů.
+Nevyužité prostředky z~této kapitoly rozpočtu vracíme.
+
+Minoritní změnou je také zapojení Adama Hájka místo původně plánovaného Martina Kurečky.
+Oba jsou pregraduální studenti, členové širšího týmu, který se zaměřuje na aplikace 
+technik strojového učení v~přírodních vědách.
+Pouze jejich specifické zaměření se od doby podání projektu vyvíjelo tak, že
+zapojení Adama Hájka v~tomto projektu bylo přímočařejší.
 
 
 \section{Přínosy projektu a hodnocení}
