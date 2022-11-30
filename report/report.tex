@@ -309,13 +309,15 @@ model je přesvědčivě schopen postihnout charakteristiky dat lépe.
 Ve druhém scénáři (chyby dekonvoluce) hlavní výsledky shrnuje obr.~\ref{f:result-wrong}.
 Nejlepších výsledků zde opět dosahuje nejsložitější model (MLP), až do úrovně pravděpodobnosti chybějící špičky
 (tj.\ relativního množství chybějících špiček včetně těch nejvýznamnějších) 40~\% je hodnota skóre~F1 nad úrovní
-úrovní 60~\%. To lze interpretovat tak, že model s~touto úspěšností chybějící špičky detekuje
+60~\%. To lze interpretovat tak, že model s~touto úspěšností chybějící špičky detekuje
 a současně negeneruje ve větší míře falešná pozitiva.
 Přestože se jedná o nejjednodušší možnou architekturu neuronové sítě, dostatečně velký model
 je zde opět s~to zachytit podstatné rysy trénovací datové sady.
-Scénáře testování a rozsáhlejší sady výsledku jsou uvedeny a detailně diskutovány v~bakalářské práci Michala Starého~\ref{stary}.
+Scénáře testování a rozsáhlejší sady výsledku jsou uvedeny a
+detailně diskutovány v~bakalářské práci Michala Starého~\ref{stary}.
 Ta je na běžná měřítka bakalářské práce nadstandardně kvalitní a obsáhlá 
 a byla oceněna cenou děkana FI MU za vynikající závěrečnou práci.
+Součástí elektronické přílohy této práce je i kompletní implementace a návod k~použití.
 
 \begin{figure}
 \begin{center}
@@ -336,15 +338,82 @@ pravděpodobnosti chybějící špičky}
 \label{f:result-wrong}
 \end{figure}
 
+Vytvořené modely byly dále experimentálně nasazeny jako součást komplexního workflow
+v~prostředí služby UMSA (\url{http://umsa.cerit-sc.cz/}),
+jehož design jsme navrhli společně s~kolegy z~centra Recetox.
+Predikce chybějících špiček je nasazena do jinak konvenčního postupu zpracování 
+dat z~hmotnostního spektrometru poté, co proběhne odstranění šumu a dekonvoluce signálu.
+Doplněné špičky jsou heuristicky rozšířeny z~celočíselného rozsahu
+(v~tom pracuje celý model, protože mnohdy historické databáze neobsahují dostatečně
+zastoupená data s~vysokým rozlišením) na více možností s~vysokým rozlišením.
+Takto získané špičky jsou doplněny zpět jako dodatečný vstup úplně prvního kroku
+zpracování dat -- detekce špiček v~nezpracovaném signálu programem apLCMS~\cite{aplcms}
+ve formě ,,nápovědy`` míst, v~nichž jsou špičky pravděpodobné (standardně je tato informace
+získávána z~historických dat naměřených na konkrétním přístroji).
+V~době podání této zprávy jsou k~dispozici první předběžné výsledky, které jsou na jednu stranu
+slibné -- ukazuje se, že predikce v~jistých případech vylepšuje citlivost identifikace sloučenin,
+ale současně narážíme na prozatím ne zcela do detailů pochopená specifika u nás získaných experimentálních
+dat, která zcela neodpovídají dostupným databázím, a~tedy i trpí účinnost našich modelů.
+Řešení tohoto problému bude předmětem dalšího výzkumu.
+
+
 
 
 % transformery pro de-novo identifikaci, prototyp funguje, Adam bude mít diplomku
 
-% Michal na tom udělal bakalářku, cena děkana
 
+Trénování modelu predikce špiček, konkrétně model GPT-2 aplikovaný na veřejně dostupnou databázi MoNA,
+jsme vyhodnotili jako vhodnou reprezentativní realistickou aplikaci pro benchmarkování výpočetních zdrojů
+s~akcelerátory. 
+Celý benchmark je k~dispozici ve zdrojovém kódu v~repozitáři~\url{https://github.com/RECETOX/raims/}, jeho
+základní struktura byla popsána výše.
 
+Výsledky běhu benchmarku na GPU clusterech Metacentra a CERIT-SC
+(\emph{adan}, \emph{fer}, \emph{fau}, \emph{galdor}, \emph{glados} a \emph{zia})
+jsou k~dispozici jako data projektu \emph{raims} ve službě Weights~\&~Biases:
+\url{https://wandb.ai/ljocha/raims/}.
+Díky zapouzdření v~kontejneru lze benchmarky kdykoli opakovat ve zcela identickém (s~výjimkou ovladače NVidia)
+softwarovém prostředí, a tedy získat velmi dobře srovnatelné výsledky měření.
+Obecně jsou výsledky ve velmi dobré shodě s~teoretickým očekáváním, což ukazuje na dobrou stabilitu
+výpočetního prostředí, a celkovou zralost celého softwarového prostředí
+(ovladače NVidia, knihovny CUDA, Torch, PyTorch i PytorchLightning).
+V~následujícím seznamu uvádíme vybrané pozorované charakteristiky chování benchmarku se stručnými komentáři.
+Je ilustrující grafy z~W\&B uvádíme pro lepší čitelnost v~příloze této zprávy.
 
-\url{https://wandb.ai/ljocha/raims/}
+\begin{itemize}
+\item \emph{Základní srovnání výkonu GPU.} Provedeno na nejmenší konfiguraci
+výpočtu (6 hlav, 6 vrstev, embedding 300, velikost dávky 64),
+obr.~\ref{all_6_6_300_1_64_32}. 
+Typy GPU jsou uspořádány v~očekávaném pořadí
+T4 (adan), GeForce RTX 2080 (glados), Quadro RTX 5000 (fau), RTX A4000 (fer), A40
+(galdor), A100 (zia).
+Nejvýkonnější A100 (zia) předstihuje nejslabší T4 (adan) téměř čtyřnásobně.  
+V~největší konfiguraci výpočtu, kterou se ještě podařilo spustit na všech typech GPU (12 hlav, 12 vrstev, embedding 300, dávka 64) je pořadí stejné, rozdíly ve výkonu jsou výraznější (obr.~\ref{f:all_12_12_300_1_64_32})
+
+\item \emph{Spotřeba energie.} Na stejné nejmenší konfiguraci výpočtu pořadí a poměr absolutní spotřeby vesměs
+odpovídá dosaženému výkonu (obr.~\ref{f:power_all_6_6_300_1_64_32}), anomálií je A100, jejíž spotřeba je výrazně nižší.
+
+\item \emph{Vliv přesnosti výpočtu.} Použitá přesnost výpočtu (smíšená 16/32 bitů vs.\ plných 32 bitů na float)
+nemá pozorovatelný vliv na přesnost modelu (obr.\ref{f:val_6_6_300_1_64_both}).
+S~výjimkou nejsilnější A100, které jsou ale starší generace než A40, jsou výpočty ve smíšené přesnosti o 10--20~\% rychlejší.
+Spotřeba energie je u RTX 2080, RTX 5000, A40 a A100 při použití smíšené přesnosti cca.\ o 15~\% nižší, u ostatních nemá
+přesnost na spotřebu vliv.
+To je opět zajímavý výsledek v~případě~A100, kde smíšená přesnost přináší energetickou úsporu aniž by ale současně
+výpočet urychlila.
+
+\item \emph{Vliv velikosti modelu.}
+Velikost modelu má přímý vliv na rychlost výpočtu dle očekávání. Ukazujeme na A40, obr.~\ref{f:galdor_any_1_128_16}
+s~dostatečnou pamětí pro všechny výpočty v~rozsahu počtu trénovaných parametrů 1.2--13.3 milionu.
+Alokaci paměti ukazuje obr.~\ref{f:mem_galdor_any_1_128_16}, spotřebu energie obr.~\ref{f:power_galdor_any_1_128_16}.
+Obojí je dle očekávání úměrné velikosti modelu, ale s~relativně malým faktorem -- více než $10\times$ větší model je pouze
+$3.6\times$ pomalejší, spotřebuje o 25~\% více energie, a k~jeho běhu je třeba $4\times$ více paměti.
+
+\item \emph{Škálování na více GPU.}
+Výpočty obecně dobře škálují při spuštění na více GPU, a to už od nejmenšího modelu s~malou dávkou (obr.~\ref{f:galdor_6_6_120_any_64_both} se zrychlením $2.15\times$ na 4 GPU    
+po největší model s~dvojnásobnou dávkou (obr.~\ref{f:galdor_12_12_300_any_128_both}), kde dosahujeme zrychlení $3.2\times$ na 4 GPU.
+Na 8 GPU se prozatím podařilo realizovat pouze menší výpočty, při nichž přidání dalších GPU výpočet ještě zrychlí,
+ale už ne významně (obr.~\ref{f:fer_6_6_120_any_64_both}.
+\end{itemize}
 
 
 
@@ -387,5 +456,39 @@ pravděpodobnosti chybějící špičky}
 % navaznost na H2020 EOSC Synergy
 
 \section{Tisková zpráva}
+
+\twocolumn
+\appendix
+\section{Grafy průběhu benchmarku na GPU clusterech Metacentra}
+
+\def\graph#1#2{
+\begin{figure}[h]
+\begin{center}
+\includegraphics[width=.95\hsize]{wandb/#1}
+\caption{#2}
+\label{f:#1}
+\end{center}
+\end{figure}
+}
+
+\graph{all_6_6_300_1_64_32}{Rychlost výpočtu v~nejmenší konfiguraci na všech clusterech}
+
+\graph{all_12_12_300_1_64_32}{Rychlost výpočtu v~největší konfiguraci spustitelné na všech clusterech}
+
+\graph{power_all_6_6_300_1_64_32}{Spotřeba energie v~nejmenší konfiguraci na všech clusterech}
+
+\graph{val_6_6_300_1_64_both}{Průběh dosažené přesnosti modelu při plné a smíšené přesnosti}
+
+\graph{galdor_any_1_128_16}{Vliv velikosti výpočtu na rychlost}
+
+\graph{power_galdor_any_1_128_16}{Vliv velikosti výpočtu na spotřebu}
+
+\graph{mem_galdor_any_1_128_16}{Vliv velikosti výpočtu na alokovanou paměť}
+
+\graph{galdor_6_6_120_any_64_both}{Škálování na více GPU na malém modelu}
+\graph{galdor_12_12_300_any_128_both}{Škálování na více GPU na velkém modelu}
+\graph{fer_6_6_120_any_64_both}{Škálování na malém modelu až do 8 GPU}
+
+
 
 \end{document}
