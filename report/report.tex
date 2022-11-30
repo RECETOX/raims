@@ -157,12 +157,12 @@ dalších metod.
 \item \emph{MLP} (\emph{Multi-Layer Perceptron}) je nejjednodušším modelem
 neuronové sítě, experimentovali jsem s~modely o jedné až třech vrstvách o
 velikosti 500 a 1000 neuronů.
-\item \emph{LSTM} je založena na architektuře tzv.~\emph{Long-Short Term Memory}~\cite{lstm} rekurentní neuronové sítě.
+\item \emph{LSTM} je založena na architektuře tzv.~\emph{Long-Short Term Memory} rekurentní neuronové sítě.
 Vyzkoušeli jsme tři varianty modelu -- s~náhodnou inicializací embeddingu, jeho předtrénováním, a se zafixovaným embddingem.
 Všechny byly aplikovány autoregresivně (výstup jedné iterace je vstupem následující) a přímo, s~extrakcí špiček z~predikované distribuce.
 % v Bc 2 hodiny @ A100
 
-\item \emph{GPT-2.} Je postavena na architektuře takto označené architektuře neuronové sítě~\cite{gpt2},
+\item \emph{GPT-2.} Je postavena na architektuře takto označené architektuře neuronové sítě
 která využívá koncept transformeru.
 Nicméně i ,,malá`` varianta používaná pro jazykové modely obsahuje 80 mil.\ trénovaných parametrů,
 což je pro naše účely neadekvátně mnoho. Proto používáme redukované varianty s~10, resp. 40 mil.\ parametrů.
@@ -203,7 +203,7 @@ Formálně je metrika definována v~příloze~B práce~\cite{stary}.
 Pro druhý scénář (chyby dekonvoluce) používáme mírně odlišnou metriku (obr.~\ref{f:metric-wrong}).
 Protože se v~tomto případě může model dopouštět dvou druhů chyb -- falešná negativa (FN), tj.\ nedetekuje špičky tam,
 kde by měly být, a falešná pozitiva (FP), detekované špičky na místech, kde být nemají,
-výslednou metriku počítáme jako skóre F1~\cite{f1}.
+výslednou metriku počítáme jako skóre F1.
 
 \begin{figure}
 \begin{center}
@@ -420,6 +420,10 @@ softwarovém prostředí, a tedy získat velmi dobře srovnatelné výsledky mě
 Obecně jsou výsledky ve velmi dobré shodě s~teoretickým očekáváním, což ukazuje na dobrou stabilitu
 výpočetního prostředí, a celkovou zralost celého softwarového prostředí
 (ovladače NVidia, knihovny CUDA, Torch, PyTorch i PytorchLightning).
+Zásadním limitujícím faktorem se ukazuje velikost paměti GPU. 
+Kombinace větších modelů s~větší velikostí dávky už se nepodařilo na akcelerátorech
+s~menší pamětí vůbec spustit (výpočet prokazatelně končí chybovou hláškou o nepovedené alokaci paměti GPU).
+
 V~následujícím seznamu uvádíme vybrané pozorované charakteristiky chování benchmarku se stručnými komentáři.
 Je ilustrující grafy z~W\&B uvádíme pro lepší čitelnost v~příloze této zprávy.
 
@@ -561,7 +565,41 @@ zapojení Adama Hájka v~tomto projektu bylo přímočařejší.
 
 % navaznost na H2020 EOSC Synergy
 
+V~projektu dokončené implementace modelů pro predikci chybějících špiček v~hmotnostním spektru
+a prototyp modelu pro de-novo identifikaci sloučenin jsou plně funkční, mohou být dále použity
+a představují výrazný posun v~oblasti, které dovolí spolupracujícímu centru Recetox dosáhnout
+na další výzkumné výsledky ve své oblasti.
+Modely jsou integrovány do experimentálního workflow ve službě UMSA (jedna z~tematických služeb
+projektu H2020 EOSC-Synergy).
+Současně know-how získané při řešení projektu nám dovoluje v~této oblasti dále 
+spolupracovat a řešit navazující problémy řešit daleko efektivněji.
+
+Implementace také byly použity jako realistická aplikace pro benchmark GPU akcelerátorů 
+a mohou být použity opakovaně pro další GPU i 
+a výhledově i dalších typy akcelerátorů podporovaných frameworkem Torch.
+Výsledky benchmarků přesvědčivě ukazují, že toto výpočetní prostředí je vyzrálé a stabilní
+a že tento typ výpočtů v~něm dobře škáluje.
+Protože benchmark je velmi dobře konfigurovatelný v~řadě parametrů, které 
+ovlivňují velikost trénovaného modelu, je možné ho bezprostředně použít
+i pro orientační odhad náročnosti i velmi odlišných aplikací, jeho použitelnost
+tedy přesahuje původní rámec.
+
+Přes komplikace popsané v~předchozí části se tedy cílů projektu podařilo dosáhnout
+a považujeme jej za celkově úspěšný.
+
 \section{Tisková zpráva}
+
+V~období 7/2021--10/2022 byl realizován projekt ,,Analýza dat z hmotnostní spektrometrie za použití strojového učení``
+vedený řešitelem na Ústavu výpočetní techniky MU ve spolupráci s~centrem Recetox PřF MU.
+Výsledkem projektu jsou inovativní modely využívající technik strojového učení,
+které výrazně vylepšují možnosti analýzy dat z~hmotnostního spektrometru.
+Modely lze zároveň opakovaně využít i jako realistický benchamark výpočetních zdrojů Metacentra vybavených
+akcelerátory.
+
+
+
+\bibliographystyle{plain}
+\bibliography{report}
 
 \twocolumn
 \appendix
