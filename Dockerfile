@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/pytorch:22.08-py3
+FROM nvcr.io/nvidia/pytorch:22.10-py3
 
 #RUN conda config \
 #      --add channels bioconda \
